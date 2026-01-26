@@ -45,16 +45,7 @@
 
           inherit (pkgs) lib;
 
-          rustToolchain = pkgs.rust-bin.stable.latest.minimal.override {
-            extensions = [
-              "rust-src"
-              "rust-analysis"
-              "rustfmt-preview"
-              "clippy"
-            ];
-            targets = [ (pkgs.rust.toRustTarget pkgs.stdenv.hostPlatform) ];
-          };
-
+          rustToolchain = pkgs.rust-bin.stable.latest.default;
           craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchain;
 
           tf-ncl-src = pkgs.lib.cleanSourceWith {
