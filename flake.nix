@@ -9,8 +9,8 @@
     crane = {
       url = "github:ipetkov/crane";
     };
-    pre-commit-hooks = {
-      url = "github:cachix/pre-commit-hooks.nix";
+    git-hooks = {
+      url = "github:cachix/git-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -33,7 +33,7 @@
 
           inherit (pkgs) lib;
 
-          rustToolchain = pkgs.rust-bin.stable."1.92.0".default;
+          rustToolchain = pkgs.rust-bin.stable.latest.default;
           craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchain;
 
           tf-ncl-src = pkgs.lib.cleanSourceWith {
@@ -71,7 +71,7 @@
             done
           '';
 
-          pre-commit = inputs.pre-commit-hooks.lib.${system}.run {
+          pre-commit = inputs.git-hooks.lib.${system}.run {
             src = ./.;
             tools = {
               inherit (pkgs) cargo rustfmt;
@@ -148,8 +148,13 @@
               ))
               self.schemas.${system}) //
             {
-              inherit tf-ncl schema-merge pre-commit;
-            };
+              inherit tf-ncl schema-merge;
+            } //
+            (pkgs.lib.optionalAttrs (!pkgs.stdenv.isDarwin) {
+              # On Darwin this depends on swift, which isn't cached and takes forever to build.
+              inherit pre-commit;
+            })
+          ;
 
           packages = {
             default = tf-ncl;
