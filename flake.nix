@@ -33,7 +33,7 @@
 
           inherit (pkgs) lib;
 
-          rustToolchain = pkgs.rust-bin.stable.latest.default;
+          rustToolchain = pkgs.rust-bin.stable."1.92.0".default;
           craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchain;
 
           tf-ncl-src = pkgs.lib.cleanSourceWith {
@@ -202,8 +202,7 @@
               nickel
               nixpkgs-fmt
               rust-analyzer
-              rustc
-              rustfmt
+              rustToolchain
               terraform
               topiary
 
