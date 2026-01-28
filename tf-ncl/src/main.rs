@@ -1,6 +1,6 @@
 use clap::Parser;
 use core::fmt;
-use nickel_lang_core::pretty::Allocator;
+use nickel_lang_parser::ast::{pretty::Allocator, AstAlloc};
 use pretty::{BoxDoc, Pretty};
 use serde::Deserialize;
 use std::{
@@ -86,13 +86,17 @@ fn main() -> anyhow::Result<()> {
     let providers = get_providers(&opts)?;
     let go_schema = get_schema(&opts)?.push_down_computed_fields();
 
+    let ast_alloc = AstAlloc::new();
     let alloc = Allocator::default();
     let with_providers = go_schema.with_providers(providers);
     let doc = RenderableSchema {
-        schema: with_providers.as_nickel().pretty(&alloc).into_doc(),
+        schema: with_providers
+            .as_nickel(&ast_alloc)
+            .pretty(&alloc)
+            .into_doc(),
         providers: with_providers
             .providers
-            .as_nickel()
+            .as_nickel(&ast_alloc)
             .pretty(&alloc)
             .into_doc(),
     };

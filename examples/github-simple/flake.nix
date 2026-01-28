@@ -13,7 +13,7 @@
     {
       devShell = inputs.tf-ncl.lib.${system}.mkDevShell {
         providers = p: {
-          inherit (p) github;
+          inherit (p) integrations_github;
         };
       };
     });

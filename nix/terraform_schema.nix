@@ -10,8 +10,9 @@ let
 
   retrieveProviderSchema = name: provider:
     let
+      cleanName = builtins.replaceStrings [ "_" ] [ "-" ] name;
       mainJson = (formats.json { }).generate "main.tf.json" {
-        terraform.required_providers = required_providers { "${name}" = provider; };
+        terraform.required_providers = required_providers { "${cleanName}" = provider; };
       };
 
       terraform-with-plugins = terraform.withPlugins (_: [ provider ]);

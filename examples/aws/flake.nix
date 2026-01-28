@@ -13,7 +13,7 @@
     {
       devShell = inputs.tf-ncl.lib.${system}.mkDevShell {
         providers = p: {
-          inherit (p) aws null external;
+          inherit (p) hashicorp_aws hashicorp_null hashicorp_external;
         };
       };
     });
