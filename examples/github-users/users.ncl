@@ -1,10 +1,10 @@
 {
   yannham = {
     is-admin = true,
-    extra-teams = [ "nickel" ],
+    extra-teams = ["nickel"],
   },
   vkleen = {
     is-admin = false,
-    extra-teams = [ "nickel" ],
+    extra-teams = ["nickel"],
   },
 }

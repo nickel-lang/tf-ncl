@@ -5,8 +5,7 @@ let { mk_teams, mk_memberships, .. } = import "./lib.ncl" in
 {
   Users = { _ : User },
 
-  users | Users
-    = import "./users.ncl",
+  users | Users = import "./users.ncl",
 
   config =
     {
@@ -15,4 +14,3 @@ let { mk_teams, mk_memberships, .. } = import "./lib.ncl" in
     & mk_memberships users
     & mk_teams config users,
 } | Tf.Config
-
