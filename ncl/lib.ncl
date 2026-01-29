@@ -107,7 +107,11 @@
     in
     fun v =>
       if is_terraform_field v then
-        (resolve_field_action [] v).value
+        resolve_field_action [] v
+        |> match {
+          'Delete => null,
+          'KeepStop v => v,
+        }
       else
         deep_filter_map go v,
 
