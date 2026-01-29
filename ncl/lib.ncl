@@ -28,30 +28,32 @@
       ```
     "%
     =
-      {
-        go : Array String -> (Array String -> Dyn -> [| 'KeepStop Dyn, 'Continue Dyn, 'Delete |]) -> { _ : Dyn } -> { _ : Dyn } -> String -> { _ : Dyn } = fun prefix f r acc field_name =>
-          let prefix = prefix @ [field_name] in
-          f prefix (r."%{field_name}")
-          |> match {
-            'KeepStop value => std.record.insert field_name value acc,
-            'Continue value =>
-              let new_value =
-                if std.is_record value then
-                  (deep_filter_map_prefix prefix f (value | { _ : Dyn })) | Dyn
-                else
-                  value
-              in
-              std.record.insert field_name new_value acc,
-            'Delete => acc,
-          },
-
-        deep_filter_map_prefix : Array String -> (Array String -> Dyn -> [| 'KeepStop Dyn, 'Continue Dyn, 'Delete |]) -> { _ : Dyn } -> { _ : Dyn } = fun prefix f r =>
-          r
-          |> std.record.fields
-          |> std.array.fold_left (go prefix f r) {},
-
-        deep_filter_map : (Array String -> Dyn -> [| 'KeepStop Dyn, 'Continue Dyn, 'Delete |]) -> { _ : Dyn } -> { _ : Dyn } = deep_filter_map_prefix [],
-      }.deep_filter_map,
+      let rec
+        go
+          : Array String -> (Array String -> Dyn -> [| 'KeepStop Dyn, 'Continue Dyn, 'Delete |]) -> { _ : Dyn } -> { _ : Dyn } -> String -> { _ : Dyn }
+          = fun prefix f r acc field_name =>
+            let prefix = prefix @ [field_name] in
+            f prefix (r."%{field_name}")
+            |> match {
+              'KeepStop value => std.record.insert field_name value acc,
+              'Continue value =>
+                let new_value =
+                  if std.is_record value then
+                    (deep_filter_map_prefix prefix f (value | { _ : Dyn })) | Dyn
+                  else
+                    value
+                in
+                std.record.insert field_name new_value acc,
+              'Delete => acc,
+            },
+        deep_filter_map_prefix
+          : Array String -> (Array String -> Dyn -> [| 'KeepStop Dyn, 'Continue Dyn, 'Delete |]) -> { _ : Dyn } -> { _ : Dyn }
+          = fun prefix f r =>
+            r
+            |> std.record.fields
+            |> std.array.fold_left (go prefix f r) {},
+      in
+      deep_filter_map_prefix [],
 
   TaggedUnion = fun tag_field tags shapes label value =>
     let value =
