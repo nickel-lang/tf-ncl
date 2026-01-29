@@ -10,4 +10,3 @@ let Tf = import "./tf-ncl-schema.ncl" in
     ],
   },
 } | Tf.Config
-

@@ -8,16 +8,14 @@ let Tf = import "./tf-ncl-schema.ncl" in
 
   memberships =
     users
-    |> std.array.map
-      (
-        fun user =>
-          {
-            resource.github_membership."%{user}-membership" = {
-              username = user,
-              role = "member",
-            }
-          }
-      )
+    |> std.array.map (fun user =>
+      {
+        resource.github_membership."%{user}-membership" = {
+          username = user,
+          role = "member",
+        }
+      }
+    )
     |> std.record.merge_all,
 
   config =
@@ -31,4 +29,3 @@ let Tf = import "./tf-ncl-schema.ncl" in
     }
     & memberships,
 } | Tf.Config
-

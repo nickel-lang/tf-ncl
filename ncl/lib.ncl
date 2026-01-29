@@ -55,43 +55,29 @@
       in
       deep_filter_map_prefix [],
 
-  TaggedUnion = fun tag_field tags shapes label value =>
-    let value =
-      std.contract.apply { "%{tag_field}" | tags, .. } label value
-    in std.contract.apply ({ "%{tag_field}" } & shapes value."%{tag_field}") label value,
-
   TerraformReference = Array String,
 
-  TerraformField = fun ctr =>
-    TaggedUnion
-      "terraform_field_type"
-      [| 'Undefined, 'Literal, 'Reference, 'ProviderComputed |]
-      (match {
-        'Undefined => {},
-        'Literal => { value | ctr },
-        'Reference => { value | Array Dyn },
-        'ProviderComputed => { path | TerraformReference },
-      }
-      ),
+  TerraformField | Dyn -> Dyn = fun ctr => [| 'Undefined, 'Literal ctr, 'Reference TerraformReference, 'ProviderComputed TerraformReference |],
 
-  is_terraform_field_record : Dyn -> Bool = fun v =>
-    std.is_record v && std.record.has_field "terraform_field_type" (v | { _ : Dyn }),
+  is_terraform_field | Dyn -> Bool = fun v =>
+    std.is_enum v
+    && (
+      let tag = (std.enum.to_tag_and_arg v).tag in
+      tag == "Undefined" || tag == "Literal" || tag == "Reference" || tag == "ProviderComputed"
+    ),
 
-  Tf = fun ctr label value_ =>
-    if is_terraform_field_record value_ then
-      std.contract.apply (TerraformField ctr) label value_
-    else
-      { terraform_field_type = 'Literal, value | (fun _l v => std.contract.apply ctr label v) = value_ },
-
-  provider_computed = fun path_ =>
-    { terraform_field_type = 'ProviderComputed, path = path_ },
-
-  undefined = { terraform_field_type | default = 'Undefined },
+  Tf = fun ctr =>
+    std.contract.custom (fun label value =>
+      if is_terraform_field value then
+        'Ok (std.contract.apply (TerraformField ctr) label value)
+      else
+        'Ok ('Literal (std.contract.apply ctr label value))
+    ),
 
   resolve_reference : Array String -> String = fun ns => "${%{std.string.join "." ns}}",
 
   typeof : Dyn -> [| 'TerraformField, 'Array, 'Other |] = fun v =>
-    if is_terraform_field_record v then
+    if is_terraform_field v then
       'TerraformField
     else if std.is_array v then
       'Array
@@ -99,18 +85,17 @@
       'Other,
 
   resolve_provider_computed =
-    let { go, resolve_field_action, .. } = {
-      resolve_field_action | Array String -> TerraformField Dyn -> Dyn = fun path field =>
-        field.terraform_field_type
-        |> match {
+    let rec
+      resolve_field_action | Array String -> TerraformField Dyn -> Dyn = fun path =>
+        match {
           'Undefined => 'Delete,
-          'Literal => 'KeepStop field.value,
-          'Reference => 'KeepStop (resolve_reference field.value),
-          'ProviderComputed =>
-            if path == field.path then
+          'Literal value => 'KeepStop value,
+          'Reference ref => 'KeepStop (resolve_reference ref),
+          'ProviderComputed p =>
+            if path == p then
               'Delete
             else
-              'KeepStop (resolve_reference field.path)
+              'KeepStop (resolve_reference p)
         },
       go | Array String -> Dyn -> [| 'KeepStop Dyn, 'Continue Dyn, 'Delete |] = fun path field =>
         typeof field
@@ -119,16 +104,15 @@
           'Array => 'KeepStop (std.array.map resolve_provider_computed field),
           'Other => 'Continue field,
         },
-    }
     in
     fun v =>
-      if is_terraform_field_record v then
+      if is_terraform_field v then
         (resolve_field_action [] v).value
       else
         deep_filter_map go v,
 
   remove_empty_records =
-    let { go, .. } = {
+    let rec
       go_field : { _ : Dyn } -> String -> { _ : Dyn } = fun r f =>
         if !std.is_record r."%{f}" then
           r
@@ -139,10 +123,9 @@
           else
             std.record.update f (new_field | Dyn) r,
       go : { _ : Dyn } -> { _ : Dyn } = fun r => r |> std.record.fields |> std.array.fold_left go_field r,
-    }
     in go,
 
-  is_defined_terraform_field_record | Dyn -> Bool = fun x => is_terraform_field_record x && x.terraform_field_type != 'Undefined,
+  is_defined_terraform_field_record | Dyn -> Bool = fun x => is_terraform_field x && x != 'Undefined,
 
   has_defined_field | String -> { _ : Dyn } -> Bool = fun name r => std.record.has_field name r && is_defined_terraform_field_record r."%{name}",
 
@@ -214,7 +197,7 @@
         if std.array.length acc > 1 then
           { "%{head}" = elaborated_record prefix (std.array.drop_first acc) field, .. }
         else
-          { "%{head}" | force = provider_computed (prefix @ field.path), .. },
+          { "%{head}" | force = 'ProviderComputed (prefix @ field.path), .. },
     }
     in fun prefix r field => candidates r [] field |> filter_mergeable r |> std.array.map (elaborate prefix),
 
@@ -225,4 +208,5 @@
       record,
 
   ComputedFields | Array String -> Array FieldDescriptor -> Dyn -> Dyn -> Dyn = fun prefix fields _l r => fields |> std.array.map (elaborate_field prefix r) |> std.array.flatten |> std.array.fold_left merge_elaborated r,
+  undefined = 'Undefined,
 }
