@@ -71,6 +71,10 @@
             done
           '';
 
+          test-lib = pkgs.writeShellScript "test-lib" ''
+            ${pkgs.nickel}/bin/nickel test ./ncl/lib.ncl
+          '';
+
           pre-commit = inputs.git-hooks.lib.${system}.run {
             src = ./.;
             tools = {
@@ -86,6 +90,13 @@
                 description = "TODO";
                 files = "^(.github/.*\\.ncl|ncl/github/.*\\.ncl)$";
                 entry = "${eval-github-yaml}";
+              };
+              test-lib = {
+                enable = true;
+                name = "test-lib";
+                description = "Run nickel doc-tests";
+                files = "ncl/lib.ncl";
+                entry = "${test-lib}";
               };
             };
           };
@@ -148,7 +159,7 @@
               ))
               self.schemas.${system}) //
             {
-              inherit tf-ncl schema-merge;
+              inherit tf-ncl schema-merge test-lib;
             } //
             (pkgs.lib.optionalAttrs (!pkgs.stdenv.isDarwin) {
               # On Darwin this depends on swift, which isn't cached and takes forever to build.
