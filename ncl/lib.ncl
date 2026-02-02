@@ -66,11 +66,38 @@
       tag == "Undefined" || tag == "Literal" || tag == "Reference" || tag == "ProviderComputed"
     ),
 
-  Tf = fun ctr =>
-    std.contract.any_of [
-      TerraformField ctr,
-      std.contract.custom (fun label value => 'Ok ('Literal (std.contract.apply ctr label value)))
-    ],
+  Tf
+    | doc m%"
+      A normalizing version of `TerraformField`: a `Tf Number` is either a bare
+      `Number` or a `TerraformField Number`. If it is a bare number, it will be
+      normalized to a `TerraformField Number` by wrapping it in `'Literal`.
+
+      # Examples
+
+      ```nickel multiline
+      5 | Tf Number
+      #=> 'Literal 5
+  
+      5 | Tf String
+      #=> error: contract broken by a value
+  
+      # The contact is idempotent
+      5 | Tf Number | Tf Number
+      #=> 'Literal 5
+
+      # The contact is idempotent also for failures
+      (5 | Tf String | Tf String) |> match { 'Literal _ => true, _ => false }
+      #=> true
+
+      (5 | Tf String | Tf String) |> match { 'Literal ('Literal _) => true, _ => false }
+      #=> error: contract broken by a value
+      ```
+    "%
+    = fun ctr =>
+      std.contract.any_of [
+        TerraformField ctr,
+        std.contract.custom (fun label value => 'Ok ('Literal (std.contract.apply ctr label value)))
+      ],
 
   resolve_reference : Array String -> String = fun ns => "${%{std.string.join "." ns}}",
 
