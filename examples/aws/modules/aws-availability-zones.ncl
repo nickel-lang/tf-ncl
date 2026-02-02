@@ -16,8 +16,6 @@ let Aws = import "./types.ncl" in
     aws.availability_zones
     |> std.record.fields
     |> std.array.map (fun name =>
-      let cfg = aws.availability_zones."%{name}"
-      in
       {
         data.aws_availability_zones."%{name}" = {
           state = "available",

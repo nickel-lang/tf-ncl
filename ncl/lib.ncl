@@ -67,12 +67,10 @@
     ),
 
   Tf = fun ctr =>
-    std.contract.custom (fun label value =>
-      if is_terraform_field value then
-        'Ok (std.contract.apply (TerraformField ctr) label value)
-      else
-        'Ok ('Literal (std.contract.apply ctr label value))
-    ),
+    std.contract.any_of [
+      TerraformField ctr,
+      std.contract.custom (fun label value => 'Ok ('Literal (std.contract.apply ctr label value)))
+    ],
 
   resolve_reference : Array String -> String = fun ns => "${%{std.string.join "." ns}}",
 
@@ -91,11 +89,8 @@
           'Undefined => 'Delete,
           'Literal value => 'KeepStop value,
           'Reference ref => 'KeepStop (resolve_reference ref),
-          'ProviderComputed p =>
-            if path == p then
-              'Delete
-            else
-              'KeepStop (resolve_reference p)
+          'ProviderComputed p if path == p => 'Delete,
+          'ProviderComputed p => 'KeepStop (resolve_reference p),
         },
       go | Array String -> Dyn -> [| 'KeepStop Dyn, 'Continue Dyn, 'Delete |] = fun path field =>
         typeof field
@@ -197,11 +192,11 @@
         },
 
       elaborated_record | Array String -> Array String -> FieldDescriptor -> { _ : Dyn } = fun prefix acc field =>
-        let head = std.array.first acc in
-        if std.array.length acc > 1 then
-          { "%{head}" = elaborated_record prefix (std.array.drop_first acc) field, .. }
-        else
-          { "%{head}" | force = 'ProviderComputed (prefix @ field.path), .. },
+        acc
+        |> match {
+          [head] => { "%{head}" | force = 'ProviderComputed (prefix @ field.path), .. },
+          [head, ..tail] => { "%{head}" = elaborated_record prefix tail field, .. },
+        }
     }
     in fun prefix r field => candidates r [] field |> filter_mergeable r |> std.array.map (elaborate prefix),
 
@@ -211,6 +206,13 @@
     else
       record,
 
-  ComputedFields | Array String -> Array FieldDescriptor -> Dyn -> Dyn -> Dyn = fun prefix fields _l r => fields |> std.array.map (elaborate_field prefix r) |> std.array.flatten |> std.array.fold_left merge_elaborated r,
+  ComputedFields
+    | Array String -> Array FieldDescriptor -> Dyn -> Dyn -> Dyn
+    = fun prefix fields _l r =>
+      fields
+      |> std.array.map (elaborate_field prefix r)
+      |> std.array.flatten
+      |> std.array.fold_left merge_elaborated r,
+
   undefined = 'Undefined,
 }
