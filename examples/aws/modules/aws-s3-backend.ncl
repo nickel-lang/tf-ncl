@@ -13,4 +13,3 @@ let Aws = import "./types.ncl" in
     region = std.string.from aws.state.region,
   },
 }
-

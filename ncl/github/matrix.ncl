@@ -29,19 +29,16 @@ in
     },
   jobs =
     configs
-    |> std.array.map
-      (
-        fun config' =>
-          {
-            "%{sanitize "%{matrix.name}-%{name_of_config config'}"}" =
-              (
-                matrix & { config = config' }
-              ).job
-              & {
-                name = "%{matrix.name} / (%{name_of_config config'})",
-              }
+    |> std.array.map (fun config' =>
+      {
+        "%{sanitize "%{matrix.name}-%{name_of_config config'}"}" =
+          (
+            matrix & { config = config' }
+          ).job
+          & {
+            name = "%{matrix.name} / (%{name_of_config config'})",
           }
-      )
+      }
+    )
     |> std.record.merge_all
 }
-

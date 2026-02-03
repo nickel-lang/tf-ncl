@@ -16,4 +16,3 @@ let User = import "./user-contract.ncl" in
     else
       value,
 }
-
